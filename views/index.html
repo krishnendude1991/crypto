@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>FIREBASE DISPLAY</title>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script type="text/javascript" src="js/chartjs-chart-financial.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.js"></script>
+    <style type="text/css">
+    h3{
+      padding-left: 10px;
+    }
+
+    table{
+      width: 1300px;
+    }
+    td canvas{
+      width:300px;
+    /*  height: 100px;*/
+    }
+    td{
+      border: 1px solid;
+      width: 590px;
+    }
+    table{
+      border-collapse: collapse
+    }
+
+  </style>
+
+</head>
+<body>
+
+<table>
+  <thead>
+    <tr>
+      <th>BTCUSDT</th>
+    </tr>
+  </thead>
+  <tbody class="btcusdt">
+  </tbody>
+</table>
+
+<table>
+  <thead>
+      <tr>
+      <th>ETHUSDT</th>
+    </tr>
+  </thead>
+  <tbody class="ethusdt">
+  </tbody>
+</table>
+
+
+
+<script type="text/javascript">
+
+var charts = {}
+
+function deployCrypto(symbol){
+  var template = `
+    <tr>
+        <td colspan="2"><canvas id="${symbol}-30min"></canvas></td>
+        <td colspan="2"><canvas id="${symbol}-15min"></canvas></td>
+        <td colspan="2"><canvas id="${symbol}-10min"></canvas></td>
+    </tr>
+
+    <tr>
+        <td colspan="2"><canvas id="${symbol}-30min-delta"></canvas></td>
+        <td colspan="2"><canvas id="${symbol}-15min-delta"></canvas></td>
+        <td colspan="2"><canvas id="${symbol}-10min-delta"></canvas></td>
+    </tr>`
+  $('tbody.'+symbol).html(template)
+}
+
+
+function init_candle_chart(id, title){
+  console.log(id)//
+  var ctx = document.getElementById(id).getContext('2d');
+  ctx.canvas.width = 2000;
+  ctx.canvas.height = 1500;
+
+
+  var chart = new Chart(ctx, {
+    type: 'candlestick',
+    data: {
+      datasets: [{
+        label: title,
+        // data: [{x:1729503660000, o:20,h:40,l:15,c:35},{x:1729503680000, o:20,h:40,l:15,c:35}],
+        data: [{x:1729503660000, o:20,h:40,l:15,c:35}],
+        backgroundColors: {down:"#FF0000",up:"#00FF00"},
+      },]
+    },
+    options:{
+      animation: {
+          duration: 0
+      },
+    }
+  });
+  return chart
+}
+
+function init_line_charts(id,datalebel1, datalebel2, color1,color2){
+  
+  var ctx = document.getElementById(id).getContext('2d');
+  ctx.canvas.width = 2000;
+  ctx.canvas.height = 1500;
+
+  const data = {
+    labels: ["January","February"],
+    datasets: [{
+      label: datalebel1,
+      data: [100,150],
+      fill: false,
+      borderColor: color1,
+      borderWidth: 1,
+      pointRadius: 2,
+    },{
+      label: datalebel2,
+      data: [150,100],
+      fill: false,
+      borderColor: color2,
+      borderWidth: 1,
+      pointRadius: 2,
+    }]
+  };
+  const config = {
+    type: 'line',
+    data: data,
+    options:{
+      animation: {
+          duration: 0
+      },
+    }
+  };
+
+  var chart = new Chart(ctx, config);
+  return chart
+}
+function init_line_chart(id,datalebel1,color1){
+  
+  var ctx = document.getElementById(id).getContext('2d');
+  ctx.canvas.width = 2000;
+  ctx.canvas.height = 1500;
+
+  const data = {
+    labels: ["January", "February"],
+    datasets: [{
+      label: datalebel1,
+      data: [100,150],
+      fill: false,
+      borderColor: color1,
+      borderWidth: 1,
+      pointRadius: 0,
+    }]
+  };
+  const config = {
+    type: 'line',
+    data: data,
+    options:{
+      animation: {
+          duration: 0
+      },
+    }
+  };
+
+  var chart = new Chart(ctx, config);
+  return chart
+}
+
+
+function init_crypto(symbol){
+  charts[symbol+"-30min"] = init_candle_chart(symbol+"-30min", "30 min Price")
+  charts[symbol+"-15min"] = init_candle_chart(symbol+"-15min", "15 min Price")
+  charts[symbol+"-10min"] = init_candle_chart(symbol+"-10min", "10 min Price")
+
+  charts[symbol+"-30min-delta"] = init_candle_chart(symbol+"-30min-delta", "30 min Delta")
+  charts[symbol+"-15min-delta"] = init_candle_chart(symbol+"-15min-delta", "15 min Delta")
+  charts[symbol+"-10min-delta"] = init_candle_chart(symbol+"-10min-delta", "10 min Delta")
+}
+
+function update_candle_chart(id, data, backgroundColors){
+  console.log(id)
+  backgroundColors = backgroundColors || {
+    up: "#00FF00CC",
+    down: "#FF0000CC",
+    unchanged: "#CCCCCC",
+  }
+  charts[id].config.data.datasets[0].data = data
+  charts[id].config.data.datasets[0].backgroundColors = backgroundColors
+  charts[id].update()
+}
+
+function update_line_charts(id,xAxis,data1,data2){
+  charts[id].config.data.labels = xAxis
+  charts[id].config.data.datasets[0].data = data1
+  charts[id].config.data.datasets[1].data = data2
+  charts[id].update()
+}
+
+function update_line_chart(id,xAxis,data1,){
+  charts[id].config.data.labels = xAxis
+  charts[id].config.data.datasets[0].data = data1
+  charts[id].update()
+}
+
+
+deployCrypto("btcusdt")
+init_crypto("btcusdt")
+
+
+deployCrypto("ethusdt")
+init_crypto("ethusdt")
+
+
+</script>
+<script type="module">
+import { getDatabase, ref,set ,onValue } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-database.js'
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js'
+	
+const count = 300
+const fifteen_records = count
+const ten_records = count
+const five_records = count
+
+window.update_crypto_charts = function(symbol,data){
+  update_candle_chart(symbol.toLowerCase()+"-30min",data[symbol].price_30_ohlc.slice(-fifteen_records),data[symbol].divergence_30_colors.slice(-fifteen_records) )
+  update_candle_chart(symbol.toLowerCase()+"-15min",data[symbol].price_15_ohlc.slice(-fifteen_records),data[symbol].divergence_15_colors.slice(-fifteen_records) )
+  update_candle_chart(symbol.toLowerCase()+"-10min",data[symbol].price_10_ohlc.slice(-fifteen_records),data[symbol].divergence_10_colors.slice(-fifteen_records) )
+
+  update_candle_chart(symbol.toLowerCase()+"-30min-delta",data[symbol].cvd_30_ohlc.slice(-fifteen_records) )
+  update_candle_chart(symbol.toLowerCase()+"-15min-delta",data[symbol].cvd_15_ohlc.slice(-fifteen_records) )
+  update_candle_chart(symbol.toLowerCase()+"-10min-delta",data[symbol].cvd_10_ohlc.slice(-fifteen_records) )
+
+}
+
+
+</script>
+
+<script>
+  const socket = io("ws://localhost:3000");
+  socket.on("crypto", function(data){
+    console.log(data)
+    update_crypto_charts("BTCUSDT",data)
+    update_crypto_charts("ETHUSDT",data)
+
+  })
+</script>
+
+
+</body>
+</html>
